@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# Tor-Router Web Gui (ipset monitoring script)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+
+ARGS="$@"
+
+do_highlight() {
+
+  local d="\x1b[1;30m" r="\x1b[1;31m" g="\x1b[1;32m" y="\x1b[1;33m" b="\x1b[1;34m" m="\x1b[1;35m" c="\x1b[1;36m" w="\x1b[1;37m" _="\x1b[0m"
+
+  sed -E "
+    s/^(TR_[0-9A-Za-z_]*)/${w}\0${_}/
+    s/^(\S+)(\/)([0-9]+)/${b}\1${_}${r}\2${_}${c}\3${_}/g # CIDR
+    s/^(\S*:\S*:\S*|\S+\.\S+\.\S+)/${b}\1${_}/g # IP
+    s/^([0-9]+)(-)([0-9]+)/${b}\1${_}${r}\2${_}${b}\3${_}/ # port range
+    s/^([0-9]+)/${b}\1${_}/ # port number
+    s/(\s+)([#].*$)/\1${d}\2${_}/g # comment
+  "
+}
+
+ports2ranges() {
+
+  awk -F '[\t ]+' '
+    function output() { print start (prev == start && last == comment ? "" : "-"prev)""comment }
+    NR == 1 {start = prev = $1; $1 = ""; comment = last = $0; next}
+    {current = $1; $1 = ""; test = $0}
+    current > prev+1 || test != last {output(); start = current; comment = test}
+    {prev = current; $1 = ""; last = test}
+    END { ( start == "" ? "" : output() ) }
+  '
+}
+
+{
+  printf '%-43.43s # %s\n' "$1" "Comment"
+
+  LANG=C ipset list "$1" -quiet |
+    tail -n+9 |
+      case $1 in
+        TR_*PORTS)
+          ports2ranges
+        ;;
+        TR_*LIST4)
+          sort -k1,1n -k2,2n -k3,3n -k4,4n -t.
+        ;;
+        TR_*LIST6)
+          sort -k1,1 -k2,2 -k3,3 -k4,4 -k5,5 -k6,6 -k7,7 -k8,8 -t:
+        ;;
+      esac |
+        sed -E 's/^\S+$/\0 ""/; s/\s+comment\s+/ /' |
+          xargs -r printf '%-43.43s # %s\n'
+
+} |
+  do_highlight
+
+exit 0
+

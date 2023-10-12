@@ -1,0 +1,20 @@
+[Unit]
+Description=Tor-Router Web Gui (HTTP Server)
+After=network.target nss-lookup.target
+ReloadPropagatedFrom=%N.service
+
+[Service]
+EnvironmentFile=/etc/default/%N
+Type=simple
+PIDFile=/var/run/%N/%N.pid
+PermissionsStartOnly=yes
+User=nobody
+Group=nogroup
+WorkingDirectory=/usr/share/%N/document-root
+ExecStartPre=/usr/bin/install -Z -m 02755 -o nobody -g nogroup -d /var/run/%N
+ExecStart=/usr/share/%N/%N
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

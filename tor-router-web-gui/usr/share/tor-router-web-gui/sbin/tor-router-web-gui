@@ -1,0 +1,86 @@
+#!/bin/sh
+
+# Tor-Router Web Gui (CGI Script)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+
+SCRIPTPATH=$(readlink -f "$0")
+SCRIPTNAME="${SCRIPTPATH##*/}"
+SCRIPTDIR="${SCRIPTPATH%/*}"
+
+# helper functions
+. $SCRIPTDIR/include/functions
+
+# I18N
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=$SCRIPTNAME
+export LANGUAGE=$( do_get_user_lang "$HTTP_ACCEPT_LANGUAGE" )
+
+ACTION=
+CONFIG=
+TABSET=
+
+OFS="$IFS"
+IFS='&'
+
+for PARAM in $QUERY_STRING; do
+  case "$PARAM" in
+    action=*) ACTION=$(urldecode "${PARAM#action=}") ;;
+       tab=*) TABSET=$(urldecode "${PARAM#tab=}") ;;
+  esac
+done
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+  for PARAM in $RAW_POST_DATA; do
+    case "$PARAM" in
+      action=*) ACTION=$(urldecode "${PARAM#action=}") ;;
+      config=*) CONFIG=$(urldecode "${PARAM#config=}") ;;
+    esac
+  done
+fi
+
+IFS="$OFS"
+
+case "${HTTP_ACCEPT_ENCODING:-identity}" in
+  *[gG][zZ][iI][pP]*) ENCODING=gzip ;;
+                   *) ENCODING=identity ;;
+esac
+
+echo "Content-Type: text/html; charset=utf-8"
+echo "Content-Encoding: $ENCODING"
+echo "Connection: close"
+echo ""
+
+case "$ACTION" in
+    start) RESULT=$(sudo /etc/init.d/tor-router start   2>&1) && NOTIFICATION=$(gettext "Tor-Router started")      || NOTIFICATION=$(gettext "Tor-Router failed to start") ;;
+     stop) RESULT=$(sudo /etc/init.d/tor-router stop    2>&1) && NOTIFICATION=$(gettext "Tor-Router stopped")      || NOTIFICATION=$(gettext "Tor-Router failed to stop") ;;
+  restart) RESULT=$(sudo /etc/init.d/tor-router restart 2>&1) && NOTIFICATION=$(gettext "Tor-Router restarted")    || NOTIFICATION=$(gettext "Tor-Router failed to restart") ;;
+   reload) RESULT=$(sudo /etc/init.d/tor-router reload  2>&1) && NOTIFICATION=$(gettext "Tor-Router reloaded")     || NOTIFICATION=$(gettext "Tor-Router failed to reload") ;;
+     save) RESULT=$(do_write_setting "$CONFIG"          2>&1) && NOTIFICATION=$(gettext "Tor-Router reconfigured") || NOTIFICATION=$(gettext "Tor-Router failed to reconfigure") ;;
+esac
+
+do_render_gui |
+if [ "$ENCODING" = "gzip" ]; then
+  gzip --no-name -9
+else
+  cat
+fi
+
+exit 0
+

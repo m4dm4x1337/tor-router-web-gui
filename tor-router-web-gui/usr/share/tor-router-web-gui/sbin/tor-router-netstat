@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# Tor-Router Web Gui (netstat monitoring script)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+
+ARGS="$@"
+
+do_highlight() {
+
+  local d="\x1b[1;30m" r="\x1b[1;31m" g="\x1b[1;32m" y="\x1b[1;33m" b="\x1b[1;34m" m="\x1b[1;35m" c="\x1b[1;36m" w="\x1b[1;37m" _="\x1b[0m"
+
+  sed -E "
+    s/\b(CLOSE|CLOSING|CLOSE_WAIT|FIN_WAIT_1|FIN_WAIT_2|NONE)\b/${d}\0${_}/g
+    s/\b(LAST_ACK|off)\b/${r}\0${_}/g
+    s/\b(ESTABLISHED|on)\b/${g}\0${_}/g
+    s/\b(TIME_WAIT|timewait)\b/${y}\0${_}/g
+    s/\b(SYN_SENT|udp|udp6|debian-tor)\b/${m}\0${_}/g
+    s/\b(LISTEN|tcp|tcp6|root|keepalive)\b/${b}\0${_}/g
+    s/\b(SYNC_RECV|probe)\b/${c}\0${_}/g
+    s/\b(IDLE|Proto|Recv-Q|Send-Q|Local|Foreign|State|User|Inode|PID\/Program|Timer|Idle|Retransmissions|Probes)\b/${w}\0${_}/g
+    s/(\s+)(\S+)\:([0-9A-Za-z_\-]+|\*)/\1${w}\2${_}${r}:${_}${d}\3${_}/g
+    s/(\s+)([0-9]+)(\/)(\S*)/\1${c}\2${_}${d}\3${_}${w}\4${_}/g
+    s/(\s+)([1-9][0-9]*(\.[0-9]+)?|[0-9]+\.[0-9]*[1-9]+[0-9]*)/\1${y}\2${_}/g
+    s/(\s+)(-|[0-9]+(\.[0-9]+)?)/\1${d}\2${_}/g
+    s/(\s+)([A-Za-z_][0-9A-Za-z_\-]*)\b/\1${d}\2${_}/g
+  "
+}
+
+{
+  echo "Proto\tRecv-Q\tSend-Q\tLocal\tForeign\tState\tUser\tPID/Program\tTimer\tIdle\tRetransmissions\tProbes"
+
+  LANG=C netstat \
+    --verbose \
+    --wide \
+    --extend \
+    --symbolic \
+    --timers \
+    --programs \
+    --numeric-hosts \
+    --all \
+    ${ARGS:---tcp --udp} |
+  tail -n+3 |
+  tr -s ' ' '\t' |
+  sed -E 's/^\b(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(([A-Z_][0-9A-Z_]*)\s+)?(\S+\s+\S+\s+\S+).*\b(\S+\s+)\(([^\/]+)\/([^\/]+)\/([^\/]+)\)$/\1\t"\3"\t\4\t\5\t\6\t\7\t\8/g; s/""/-/' |
+  cut -f1-7,9- |
+  tr -d '"()' |
+  sort -k1,1 -k4,4n -k5,5n -k6,6
+
+} |
+  column -t |
+    do_highlight
+
+exit 0
+

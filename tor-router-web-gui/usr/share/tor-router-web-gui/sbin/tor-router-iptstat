@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# Tor-Router Web Gui (iptables monitoring script)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+
+DEBIAN_TOR_UID=$(id -u debian-tor 2>/dev/null || true)
+
+do_highlight() {
+
+  local d="\x1b[1;30m" r="\x1b[1;31m" g="\x1b[1;32m" y="\x1b[1;33m" b="\x1b[1;34m" m="\x1b[1;35m" c="\x1b[1;36m" w="\x1b[1;37m" _="\x1b[0m"
+
+  sed -E "
+    ${DEBIAN_TOR_UID:+s/(owner\s+UID\s+match\s+)$DEBIAN_TOR_UID/\1${g}debian-tor${_}/g}
+
+    s/(^|\s)(WHITELIST|BLACKLIST|all)\b/\1${d}\2${_}/g # BLACK
+    s/(^|\s)(DROP|INVALID)\b/\1${r}\2${_}/g # RED
+    s/(^|\s)(ACCEPT|ESTABLISHED|src|dst)\b/\1${g}\2${_}/g # GREEN
+    s/(^|\s)(REJECT|RETURN|icmp[6]?(-[a-z]+)+|tcp-reset)\b/\1${y}\2${_}/g # YELLOW
+    s/(^|\s)(NEW|TR_[A-Z]+[46]?|tcp)\b/\1${b}\2${_}/g # BLUE
+    s/(^|\s|\()(DNAT|SNAT|REDIRECT|ctstate|dports|dtp|flags|level|prefix|match-set|match|multiport|owner|policy|ports|redir|reject-with|state|udp|UID)\b/\1${m}\2${_}/g # MAGENTA
+    s/(^|\s|\!)(MASQUERADE|INPUT|OUTPUT|FORWARD|PREROUTING|POSTROUTING|lo|eth[0-9]|wlan[0-9])\b/\1${c}\2${_}/g # CYAN
+    s/(^|\s)(LOG|Chain|references|packets|pkts|bytes|target|prot|opt|in|out|source|destination)\b/\1${w}\2${_}/g # WHITE
+
+    # s/(\b)(0x[0-9A-Fa-f]+)\b/\1${c}\2${_}/g # Hex Number
+    s/\b(0x11\/0x11)\b/${c}FIN${_},${c}ACK${_}/g # BLUE
+    s/\b(0x14\/0x14)\b/${c}RST${_},${c}ACK${_}/g # BLUE
+    s/\b(0x17\/0x02)\b/${c}SYN${_}/g # BLUE
+
+    s/(^|\s)(\"([^\"]*)\")/\1${w}\2${_}/g # WHITE quoted string
+
+    s/(^|\s)(dpts|spts|dpt|spt|to)(:)(\S+)\b/\1${y}\2${_}${r}\3${_}${c}\4${_}/g # source/destination ports
+
+    s/(\s)(!)?(\S+)(\/)([0-9]+)/\1\2${b}\3${_}${r}\4${_}${c}\5${_}/g # CIDR
+    s/(\s)(!)?(\S*:\S*:\S*|\S+\.\S+\.\S+)/\1\2${b}\3${_}/g # IP
+
+    s/(^|\s)([0-9]+K)\b/\1${c}\2${_}/g # CYAN 1K
+    s/(^|\s)([0-9]+M)\b/\1${m}\2${_}/g # MAGENTA 1M
+    s/(^|\s)([0-9]+G)\b/\1${y}\2${_}/g # YELLOW 1G
+    s/(^|\s)([0-9]+T)\b/\1${r}\2${_}/g # RED 1T
+    s/(^|\s)(\/\*.*\*\/)/\1${d}\2${_}/g # BLACK /* comment */
+    s/(^|\s|\()([0])\b/\1${d}\2${_}/g # BLACK 0
+    s/(^|\s|\()([1-9][0-9]*)\b/\1${b}\2${_}/g # BLUE 1 (or more)
+
+    s/[\!]+/${r}\0${_}/g # RED !
+    s/[\,]+/${w}\0${_}/g # CYAN ,
+    s/([\(\)]+)/${w}\0${_}/g # WHITE ()
+    s/(\s)(\-\-|\*)(\s)/\1${d}\2${_}\3/g # BLACK -- *
+  "
+}
+
+case ${1:--4} in
+  -4) LANG=C  iptables -t ${2:-filter} -nvL | do_highlight ;;
+  -6) LANG=C ip6tables -t ${2:-filter} -nvL | do_highlight ;;
+esac
+
+exit 0
+

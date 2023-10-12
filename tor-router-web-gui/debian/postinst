@@ -1,0 +1,36 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+  if command -v deb-systemd-helper 1>/dev/null 2>/dev/null; then
+    deb-systemd-helper unmask tor-router-web-gui.service || true
+    if deb-systemd-helper --quiet was-enabled tor-router-web-gui.service; then
+      deb-systemd-helper enable tor-router-web-gui.service || true
+     else
+      deb-systemd-helper update-state tor-router-web-gui.service || true
+    fi
+  fi
+fi
+
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+  if [ -x /etc/init.d/tor-router-web-gui ]; then
+    update-rc.d tor-router-web-gui defaults
+  fi
+fi
+
+if [ -d /run/systemd/system ]; then
+  systemctl --system daemon-reload 1>/dev/null 2>/dev/null || true
+fi
+
+if [ "$1" = "configure" ]; then
+  if [ -x /etc/init.d/tor-router-web-gui ]; then
+    if systemctl is-active --quiet tor-router-web-gui.service >/dev/null 2>&1; then
+      invoke-rc.d tor-router-web-gui restart
+#   else
+#     invoke-rc.d tor-router-web-gui start
+    fi
+  fi
+fi
+
+exit 0

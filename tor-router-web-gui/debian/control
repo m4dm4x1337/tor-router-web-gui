@@ -1,0 +1,16 @@
+Source: tor-router-web-gui
+Section: net
+Priority: optional
+Maintainer: m4dm4x1337 <madmax@earth.local>
+Bugs: https://github.com/m4dm4x1337/tor-router-web-gui/issues
+Standards-Version: 4.6.2
+
+Package: tor-router-web-gui
+Architecture: all
+Depends: bsdmainutils, colorized-logs, coreutils (>= 8.5), gawk, grep (>= 2.5.4), ipset, iptables, iw, lsb-base, net-tools, procps, python3, sed (>= 4.2), sudo, tor-router
+Enhances: tor-router
+Suggests: tor-router-gnome
+Homepage: https://github.com/m4dm4x1337/tor-router-web-gui
+Description: Manage and monitor Tor-Router remotely via a web browser
+ The Tor-Router Web Gui allows you to manage and monitor Tor-Router 
+ remotely via a web browser.

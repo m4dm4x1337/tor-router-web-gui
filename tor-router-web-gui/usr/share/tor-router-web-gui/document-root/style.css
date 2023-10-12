@@ -1,0 +1,232 @@
+body {
+  font: 1rem sans-serif;
+}
+
+dialog {
+  border: 1px solid black;
+  box-shadow: 5px 5px 20px 5px #000000;
+  position: fixed;
+  top: 25%;
+  transform: translateY(-25%);
+  z-index: 2;
+}
+
+span[style*="text-decoration: blink"] {
+  animation: blink 1s step-end infinite;
+  background: #a00 !important;
+}
+
+@keyframes blink {  67% { color: rgba(223, 223, 223, 0) }}
+
+@media (max-width: 767px) {
+  body {
+    zoom: 0.65;
+  }
+
+  dialog {
+    max-width: 85%;
+  }
+}
+
+button {
+  padding: .5rem 1rem;
+}
+
+pre.console {
+  background: #151819;
+  color: #babdb6;
+  font-family: monospace;
+  margin: 1rem 0;
+  padding: .5rem;
+  overflow: auto;
+  white-space: pre;
+}
+
+pre.console:empty {
+  display: none;
+}
+
+#tor-router pre:nth-of-type(2) {
+  max-height: 45vh;
+}
+
+/*
+** Scrollbars
+*/
+
+::-webkit-scrollbar						{ background-color: transparent; border: 0; width: 4px; height: 4px; }
+::-webkit-scrollbar-button				{ background-color: transparent; border: 0; width:      0; height:      0; }
+::-webkit-scrollbar-thumb				{ background-color: transparent; border: 0; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover			{ background-color: transparent; border: 0; }
+::-webkit-scrollbar-thumb:active		{ background-color: transparent; border: 0; }
+::-webkit-scrollbar-track				{ background-color: transparent; border: 0; }
+::-webkit-scrollbar-track:hover			{ background-color: transparent; border: 0; }
+::-webkit-scrollbar-track:active		{ background-color: transparent; border: 0; }
+::-webkit-scrollbar-corner				{ background-color: transparent; border: 0; width: 0; height: 0; }
+
+:hover::-webkit-scrollbar-thumb			{ background-color: #32bc00; }
+:hover::-webkit-scrollbar-thumb:hover	{ background-color: #32bc00; }
+:hover::-webkit-scrollbar-thumb:active	{ background-color: #32bc00; }
+
+/*
+** Pure CSS Tabs
+**
+** Source: https://codepen.io/markcaron/pen/MvGRYV
+*/
+
+.tabset > input[type="radio"] {
+  position: absolute;
+  left: -200vw;
+}
+
+.tabset .tab-panel {
+  display: none;
+}
+
+.tabset > input:nth-of-type(1):checked ~ .tab-panels > .tab-panel:nth-of-type(1),
+.tabset > input:nth-of-type(2):checked ~ .tab-panels > .tab-panel:nth-of-type(2),
+.tabset > input:nth-of-type(3):checked ~ .tab-panels > .tab-panel:nth-of-type(3),
+.tabset > input:nth-of-type(4):checked ~ .tab-panels > .tab-panel:nth-of-type(4),
+.tabset > input:nth-of-type(5):checked ~ .tab-panels > .tab-panel:nth-of-type(5),
+.tabset > input:nth-of-type(6):checked ~ .tab-panels > .tab-panel:nth-of-type(6),
+.tabset > input:nth-of-type(7):checked ~ .tab-panels > .tab-panel:nth-of-type(7),
+.tabset > input:nth-of-type(8):checked ~ .tab-panels > .tab-panel:nth-of-type(8) {
+  display: block;
+}
+
+.tabset > label {
+  position: relative;
+  display: inline-block;
+  padding: 15px 15px 25px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tabset > label::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  bottom: 10px;
+  width: 22px;
+  height: 4px;
+  background: #8d8d8d;
+}
+
+input:focus-visible + label {
+  outline: 2px solid rgba(0,102,204,1);
+  border-radius: 3px;
+}
+
+.tabset > label:hover,
+.tabset > input:focus + label,
+.tabset > input:checked + label {
+  color: #06c;
+}
+
+.tabset > label:hover::after,
+.tabset > input:focus + label::after,
+.tabset > input:checked + label::after {
+  background: #06c;
+}
+
+.tabset > input:checked + label {
+  border-color: #ccc;
+  border-bottom: 1px solid #fff;
+  margin-bottom: -1px;
+}
+
+.tab-panel {
+  padding: 0;
+  border-top: 1px solid #ccc;
+}
+
+/*
+** Syntax Highlight Editor
+**
+** Source: https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
+*/
+
+#editor {
+  background: black;
+  margin: 1rem 0;
+  padding: .5rem;
+  position: relative;
+  height: calc(100vh - 12rem);
+}
+
+#editing, #highlighting {
+  /* Both elements need the same text and space styling so they are directly on top of each other */
+  margin: .5rem;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  width: auto;
+  height: auto;
+  /* In the same place */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Can be scrolled */
+  overflow: auto;
+  white-space: nowrap; /* Allows textarea to scroll horizontally */
+}
+
+#editing, #highlighting, #highlighting * {
+  /* Also add text styles to highlighing tokens */
+  font-size: 1rem;
+  font-family: monospace;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+#highlighting {
+  background: black;
+  z-index: 0;
+}
+
+#editing {
+  /* Make textarea almost completely transparent */
+  color: silver;
+  background: black;
+  caret-color: white; /* Or choose your favourite color */
+  /* No resize on textarea */
+  resize: none;
+  /* Move the textarea in front of the result */
+  z-index: 1;
+}
+
+/*
+** Make the textarea colors transparent if the #highlighting element 
+** exists before the textarea element (it's only possible if JavaScript
+** is enabled)
+*/
+#highlighting + #editing {
+  /* Make textarea almost completely transparent */
+  color: transparent;
+  background: transparent;
+}
+
+code[class*="language-"] {
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.5;
+
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
+  tab-size: 4;
+
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  -ms-hyphens: none;
+  hyphens: none;
+
+  color: white;
+}
+

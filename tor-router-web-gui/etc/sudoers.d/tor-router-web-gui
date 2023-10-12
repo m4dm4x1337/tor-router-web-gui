@@ -1,0 +1,19 @@
+Cmnd_Alias TOR_ROUTER_WEB_GUI = \
+    /bin/systemctl status tor-router.service --full --lines=1 --no-pager, \
+    /etc/init.d/tor-router start, \
+    /etc/init.d/tor-router stop, \
+    /etc/init.d/tor-router reload, \
+    /etc/init.d/tor-router restart, \
+    /etc/init.d/tor-router status, \
+    /sbin/iw, \
+    /usr/bin/tee /etc/default/tor-router, \
+    /usr/share/tor-router-web-gui/sbin/tor-router-netstat *, \
+    /usr/share/tor-router-web-gui/sbin/tor-router-ipsstat *, \
+    /usr/share/tor-router-web-gui/sbin/tor-router-iptstat *, \
+    /usr/share/tor-router-web-gui/sbin/tor-router-logdump *, \
+    /usr/share/tor-router/sbin/tor-router-status
+
+Defaults!TOR_ROUTER_WEB_GUI !syslog, !pam_session, env_keep+=SYSTEMD_COLORS
+
+nobody ALL=(ALL) NOPASSWD: TOR_ROUTER_WEB_GUI
+

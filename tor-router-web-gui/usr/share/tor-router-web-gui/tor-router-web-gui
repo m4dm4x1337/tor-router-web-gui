@@ -1,0 +1,88 @@
+#!/usr/bin/python3 -u
+
+# Tor-Router Web Gui (HTTP Server)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import os
+import base64
+import urllib.parse
+from http.server import HTTPServer, CGIHTTPRequestHandler
+
+def main():
+
+  Server.username = os.environ['USERNAME'] if 'USERNAME' in os.environ else ''
+  Server.password = os.environ['PASSWORD'] if 'PASSWORD' in os.environ else ''
+  Server.address  = os.environ['ADDRESS']  if 'ADDRESS'  in os.environ else '127.0.0.1'
+  Server.port     = os.environ['PORT']     if 'PORT'     in os.environ else 8080
+
+  Server.auth     = base64.b64encode(bytes('{0}:{1}'.format(Server.username, Server.password), 'utf-8'))
+
+  httpd = HTTPServer((Server.address, Server.port), Server)
+
+  pid_file_path = "/var/run/tor-router-web-gui/tor-router-web-gui.pid"
+
+  current_pid = os.getpid()
+
+  try:
+    with open(pid_file_path, 'w') as pid_file:
+      pid_file.write(str(current_pid))
+    print(f"Server ready! (PID: {current_pid})")
+  except Exception as e:
+    print(f"Error writing PID file: {str(e)}")
+
+
+  httpd.serve_forever()
+
+class Server(CGIHTTPRequestHandler):
+  def do_HEAD(self, authenticated):
+    if authenticated:
+      self.send_response(200)
+    else:
+      self.send_response(401)
+      self.send_header('WWW-Authenticate','Basic realm=\"Login\"')
+    self.send_header('Content-type', 'text/html')
+    self.end_headers()
+
+  def do_GET(self):
+    os.environ["HTTP_ACCEPT_ENCODING"] = self.headers.get('Accept-Encoding', '')
+    os.environ["HTTP_ACCEPT_LANGUAGE"] = self.headers.get('Accept-Language', '')
+    if Server.username == '' and Server.password == '' or self.headers.get('Authorization') == 'Basic '+self.auth.decode('utf-8'):
+      requested_url = urllib.parse.urlparse(self.path)
+      if requested_url.path in ["", "/", "/cgi-bin", "/cgi-bin/"]:
+        self.send_response(302)
+        self.send_header('Location', '/cgi-bin/tor-router-web-gui')
+        self.end_headers()
+      else:
+        CGIHTTPRequestHandler.do_GET(self)
+    elif self.headers.get('Authorization') == None:
+      self.do_HEAD(False)
+      self.wfile.write(bytes('Wrong username or password', 'utf-8'))
+    else:
+      self.do_HEAD(False)
+      self.wfile.write(bytes('Wrong username or password', 'utf-8'))
+
+  def do_POST(self):
+    content_length = int(self.headers['Content-Length'])
+    raw_post_data = self.rfile.read(content_length)
+#   print(f"POST DATA: {raw_post_data}")
+    os.environ["RAW_POST_DATA"] = raw_post_data.decode('utf-8').replace('\r', r'\r').replace('\n', r'\n')
+    self.do_GET()
+
+if __name__ == '__main__':
+  main()
+

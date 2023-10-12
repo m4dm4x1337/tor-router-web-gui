@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+rm -fr \
+  tor-router-web-gui_1.0* \
+  tor-router-web-gui/debian/files \
+  tor-router-web-gui/debian/.debhelper/ \
+  tor-router-web-gui/debian/tor-router-web-gui*
+
+exit $?

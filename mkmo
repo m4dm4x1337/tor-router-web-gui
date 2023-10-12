@@ -1,0 +1,11 @@
+#!/bin/sh
+
+APPNAME=tor-router-web-gui
+
+for FILENAME in "$APPNAME/usr/share/locale/"*"/LC_MESSAGES/$APPNAME.po"; do
+   msgfmt --verbose --statistics "$FILENAME" --output-file="${FILENAME%*.po}.mo"
+done
+
+ls -al "$APPNAME/usr/share/locale/"*"/LC_MESSAGES/$APPNAME".[mp]o
+
+exit 0

@@ -1,0 +1,166 @@
+#! /bin/bash
+
+### BEGIN INIT INFO
+# Provides:          tor-router-web-gui
+# Required-Start:    $local_fs $remote_fs $network $named $time
+# Required-Stop:     $local_fs $remote_fs $network $named $time
+# Should-Start:      $syslog
+# Should-Stop:       $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Tor-Router Web Gui (HTTP Server)
+# Description:       Tor-Router Web Gui (HTTP Server)
+### END INIT INFO
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+. /lib/lsb/init-functions
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+NAME="${0##*/}"
+DAEMON=/usr/bin/$NAME
+DESC="Tor-Router Web Gui (HTTP Server)"
+PID_DIR=/var/run/$NAME
+PID_FILE=$PID_DIR/$NAME.pid
+DEFAULTSFILE=/etc/default/$NAME
+WAITFORDAEMON=60
+RUN_DAEMON=yes
+ARGS=""
+
+test -x $DAEMON || exit 0
+
+# Include tor-router-web-gui defaults if available
+if [ -f $DEFAULTSFILE ] ; then
+	. $DEFAULTSFILE
+fi
+
+wait_for_deaddaemon () {
+	pid=$1
+	sleep 1
+	if test -n "$pid"
+	then
+		if kill -0 $pid 2>/dev/null
+		then
+			cnt=0
+			while kill -0 $pid 2>/dev/null
+			do
+				cnt=`expr $cnt + 1`
+				if [ $cnt -gt $WAITFORDAEMON ]
+				then
+					log_action_end_msg 1 "still running"
+					exit 1
+				fi
+				sleep 1
+				[ "`expr $cnt % 3`" != 2 ] || log_action_cont_msg ""
+			done
+		fi
+	fi
+	log_action_end_msg 0
+}
+
+
+check_pid_dir () {
+	if test ! -d $PID_DIR; then
+		mkdir -m 02755 "$PID_DIR"
+		chown nobody:nogroup "$PID_DIR"
+		! [ -x /sbin/restorecon ] || /sbin/restorecon "$PID_DIR"
+	fi
+
+	if test ! -x $PID_DIR; then
+		log_action_end_msg 1 "cannot access $PID_DIR directory, are you root?"
+		exit 1
+	fi
+}
+
+case "$1" in
+  start)
+	if [ "$RUN_DAEMON" != "yes" ]; then
+		log_action_msg "Not starting $DESC (Disabled in $DEFAULTSFILE)."
+		exit 0
+	fi
+
+	check_pid_dir
+
+	log_action_begin_msg "Starting $DESC"
+
+	if start-stop-daemon --stop --signal 0 --quiet --pidfile $PID_FILE --exec $DAEMON; then
+		log_action_end_msg 0 "already running"
+	else
+		if start-stop-daemon --start --quiet --pidfile $PID_FILE --exec $DAEMON -- $AA_EXEC_ARGS $ARGS; then
+			log_action_end_msg 0
+		else
+			log_action_end_msg 1
+			exit 1
+		fi
+	fi
+	;;
+  stop)
+	log_action_begin_msg "Stopping $DESC"
+	pid=`cat $PID_FILE 2>/dev/null` || true
+
+	if test ! -f $PID_FILE -o -z "$pid"; then
+		log_action_end_msg 0 "not running - there is no $PID_FILE"
+		exit 0
+	fi
+
+	if start-stop-daemon --stop --signal INT --quiet --pidfile $PID_FILE --exec $DAEMON; then
+		wait_for_deaddaemon $pid
+	elif kill -0 $pid 2>/dev/null; then
+		log_action_end_msg 1 "Is $pid not $NAME?  Is $DAEMON a different binary now?"
+		exit 1
+	else
+		log_action_end_msg 1 "$DAEMON died: process $pid not running; or permission denied"
+		exit 1
+	fi
+	;;
+  reload|force-reload)
+	log_action_begin_msg "Reloading $DESC configuration"
+	pid=`cat $PID_FILE 2>/dev/null` || true
+
+	if test ! -f $PID_FILE -o -z "$pid"; then
+		log_action_end_msg 1 "not running - there is no $PID_FILE"
+		exit 1
+	fi
+
+	if start-stop-daemon --stop --signal 1 --quiet --pidfile $PID_FILE --exec $DAEMON; then
+		log_action_end_msg 0
+	elif kill -0 $pid 2>/dev/null; then
+		log_action_end_msg 1 "Is $pid not $NAME?  Is $DAEMON a different binary now?"
+		exit 1
+	else
+		log_action_end_msg 1 "$DAEMON died: process $pid not running; or permission denied"
+		exit 1
+	fi
+	;;
+  restart)
+	$0 stop
+	sleep 1
+	$0 start
+	;;
+  status)
+	if test ! -r $(dirname $PID_FILE); then
+		log_failure_msg "cannot read PID file $PID_FILE"
+		exit 4
+	fi
+	pid=`cat $PID_FILE 2>/dev/null` || true
+	if test ! -f $PID_FILE -o -z "$pid"; then
+		log_failure_msg "$NAME is not running"
+		exit 3
+	fi
+	if ps "$pid" >/dev/null 2>&1; then
+		log_success_msg "$NAME is running"
+		exit 0
+	else
+		log_failure_msg "$NAME is not running"
+		exit 1
+	fi
+	;;
+  *)
+	log_action_msg "Usage: $0 {start|stop|restart|reload|force-reload|status}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

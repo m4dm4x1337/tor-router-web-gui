@@ -1,0 +1,30 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "purge" ] ; then
+  update-rc.d tor-router-web-gui remove
+fi
+
+if [ -d /run/systemd/system ] ; then
+  systemctl --system daemon-reload >/dev/null || true
+fi
+
+if [ "$1" = "remove" ]; then
+  if command -v deb-systemd-helper 1>/dev/null 2>/dev/null; then
+    deb-systemd-helper mask tor-router-web-gui.service >/dev/null || true
+  fi
+fi
+
+if [ "$1" = "purge" ]; then
+  if command -v deb-systemd-helper 1>/dev/null 2>/dev/null; then
+    deb-systemd-helper purge tor-router-web-gui.service >/dev/null || true
+    deb-systemd-helper unmask tor-router-web-gui.service >/dev/null || true
+  fi
+fi
+
+if [ -d /run/systemd/system ]; then
+  systemctl --system daemon-reload 1>/dev/null 2>/dev/null || true
+fi
+
+exit 0

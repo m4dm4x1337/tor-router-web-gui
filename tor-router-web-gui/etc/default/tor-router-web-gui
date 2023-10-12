@@ -1,0 +1,10 @@
+# The address the server is listening on
+# ADDRESS=127.0.0.1
+
+# The port the server is listening on
+# PORT=8080
+
+# If you want the server to be access protected, 
+# you can set the user name and password here
+# USERNAME=
+# PASSWORD=

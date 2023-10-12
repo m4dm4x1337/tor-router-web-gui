@@ -1,0 +1,23 @@
+#!/bin/sh
+
+APPNAME=tor-router-web-gui
+
+SHFILE=$APPNAME/usr/share/$APPNAME/sbin/
+POFILE=$APPNAME/usr/share/locale/de/LC_MESSAGES/$APPNAME.po
+
+sed -i '/^\#\:/d' "$POFILE" && \
+grep -hoER "\bgettext\b\s+(\"([^\"\\]*|\\.)*\"|'([^'\\]*|\\.)*'|\b[0-9A-Za-z]+\b)" "$SHFILE" |
+xgettext \
+  --join-existing \
+  --omit-header \
+  --sort-by-file \
+  --keyword=_ \
+  --language=Shell \
+  --package-name="$APPNAME" \
+  --package-version=1.0 \
+  --msgid-bugs-address='m4dm4x1337 <madmax@earth.local>' \
+  --output="$POFILE" \
+  /dev/stdin && \
+ls -al "$APPNAME/usr/share/locale/"*"/LC_MESSAGES/$APPNAME".[mp]o
+
+exit $?

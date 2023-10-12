@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# Tor-Router Web Gui (journalctl monitoring script)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+set -e
+
+SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value tor-router.service)"
+
+if [ -z "$SYSTEMD_INVOCATION_ID" ]; then
+  echo "Tor router has not been started yet."
+else
+  echo '# view logs in your terminal: journalctl -aelq -u tor-router -n 1000 --no-pager _SYSTEMD_INVOCATION_ID="$(systemctl show -p InvocationID --value tor-router)"'
+  echo ''
+
+  SYSTEMD_COLORS=1 journalctl --unit=tor-router.service --all --full --lines=1000 --no-pager --pager-end --quiet _SYSTEMD_INVOCATION_ID="$SYSTEMD_INVOCATION_ID"
+fi
+
+exit 0
+

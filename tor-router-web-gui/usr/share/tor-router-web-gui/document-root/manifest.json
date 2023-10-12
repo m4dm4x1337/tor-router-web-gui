@@ -1,0 +1,13 @@
+{
+  "name": "Tor-Router Web Gui",
+  "start_url": "/cgi-bin/tor-router-web-gui",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/tor-router.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

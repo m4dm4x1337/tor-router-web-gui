@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+./clean
+
+cd tor-router-web-gui && dpkg-buildpackage --no-sign && cd ..
+
+exit 0

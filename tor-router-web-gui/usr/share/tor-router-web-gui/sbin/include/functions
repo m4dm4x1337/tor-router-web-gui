@@ -1,0 +1,317 @@
+# Tor-Router Web Gui (CGI script helper functions)
+# Copyright (C) 2023 m4dm4x1337
+#
+# This file is part of the tor-router-web-gui debian package.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+do_convert_to_html() { # $1=id (optional)
+  ansi2html --no-header |
+    sed "s/<pre[^>]*>/<pre class=\"console\">/"
+}
+
+do_get_tor_router_status() {
+  SYSTEMD_COLORS=1 sudo systemctl status tor-router.service --full --lines=1 --no-pager | do_convert_to_html
+}
+
+do_get_tor_router_logs() {
+  sudo /usr/share/tor-router-web-gui/sbin/tor-router-logdump $@ 2>&1 | do_convert_to_html || true
+}
+
+do_get_netstat_log() {
+  sudo /usr/share/tor-router-web-gui/sbin/tor-router-netstat $@ 2>&1 | do_convert_to_html || true
+}
+
+do_get_iptables_log() { # $1 = inet (4/6) $2 = table
+  sudo /usr/share/tor-router-web-gui/sbin/tor-router-iptstat $@ 2>&1 | do_convert_to_html || true
+}
+
+do_get_ipset_log() { # $1 = list
+  sudo /usr/share/tor-router-web-gui/sbin/tor-router-ipsstat $@ 2>&1 | do_convert_to_html || true
+}
+
+do_get_wlan_clients() {
+  for IFACE in `ls -1 /sys/class/net`; do
+    if [ -e /sys/class/net/$IFACE/device ]; then
+      if [ -e /sys/class/net/$IFACE/wireless ]; then
+        echo "WIFI clients ($IFACE)"
+        echo
+        sudo iw dev $IFACE station dump
+        echo
+      fi
+    fi
+  done | do_convert_to_html
+}
+
+do_read_settings() {
+  cat /etc/default/tor-router 2>/dev/null || true
+}
+
+do_write_setting() {
+  printf %s "$1" |
+    sed --null-data 's/\r\n/\n/g; s/\r/\n/g' |
+      sudo tee /etc/default/tor-router >/dev/null &&
+        gettext "The file has been saved." ||
+        gettext "The file could not be saved."
+}
+
+do_get_user_lang() { # $1=input
+
+  local IFS=','
+  local lang=C max=0 v= l= q=
+
+  for v in $1; do
+
+    case $v in
+      [a-z][a-z]*q=*) q=${v##*q=} ;;
+      [a-z][a-z]*)    q=1 ;;
+      *)              continue ;;
+    esac
+
+    case ${q:-1} in
+      [0-9].[0-9]) q=${q%%.*}${q##*.} ;;
+      [0-9])       q=${q}0 ;;
+      *)           continue ;;
+    esac
+
+    l=${v%"${v#??}"}
+    q=${q#${q%%[!0]*}}
+
+    if [ ${q:=0} -gt $max ]; then
+      if [ "$l" = "en" ]; then
+        lang=C max=$q
+      elif [ -f "/usr/share/locale/$l/LC_MESSAGES/$SCRIPTNAME.mo" ]; then
+        lang=$l max=$q
+      fi
+    fi
+
+  done
+
+  echo $lang
+
+}
+
+htmlspecialchars() {
+sed -e '
+s/&/\&amp;/g
+s/</\&lt;/g
+s/>/\&gt;/g
+s/"/\&quot;/g
+s/\x27/\&#39;/g
+'
+}
+
+urldecode() {
+  printf %s "$1" | \
+    sed 's/+/ /g;s/%/\\x/g' | \
+      xargs -0 printf %b
+}
+
+do_render_gui() {
+
+  if [ -n "$NOTIFICATION" ]; then
+    DIALOG=open
+  fi
+
+  STATUS=$(sudo /usr/share/tor-router/sbin/tor-router-status)
+
+  case "$STATUS" in
+     offline) CLR1=f6545d CLR2=9c0d15 STATUS_TEXT=$(gettext "Offline") ;;
+    disabled) CLR1=5aa6e6 CLR2=2d6ab0 STATUS_TEXT=$(gettext "Inactive") ;;
+     stopped) CLR1=ffc77d CLR2=d9680e STATUS_TEXT=$(gettext "Killed") ;;
+     enabled) CLR1=b92ff5 CLR2=430c5f STATUS_TEXT=$(gettext "Active") ;;
+  esac
+
+  #if systemctl is-active --quiet tor-router.service >/dev/null 2>&1; then
+  if [ "$STATUS" = "enabled" ]; then
+    btn_start=disabled
+    btn_stop=
+    btn_reload=
+  else
+    btn_start=
+    btn_stop=disabled
+    btn_reload=disabled
+  fi
+
+  case ${TABSET:-tor-router} in
+    tor-router) TAB1=checked ;;
+      settings) TAB2=checked ;;
+       netstat) TAB3=checked ;;
+      iptables) TAB4=checked ;;
+        ipsets) TAB5=checked ;;
+          wlan) TAB6=checked ;;
+        donate) TAB7=checked ;;
+         about) TAB8=checked ;;
+  esac
+
+cat << EOT
+<!DOCTYPE html>
+<html lang="$( [ "$LANGUAGE" = "C" ] && echo "en" || echo "$LANGUAGE" )">
+
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Tor-Router ($STATUS_TEXT)</title>
+    <link rel="shortcut icon" type="image/x-icon" href='data:image/svg+xml,$(cat "${SCRIPTDIR%/*}/document-root/tor-router.svg" | sed "s/\bb92ff5\b/$CLR1/g; s/\b430c5f\b/$CLR2/g; s/\#/%23/g")' />
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+    <script type="text/javascript" src="/javascript.js"></script>
+  </head>
+
+  <body data-notification-title="$( printf %s "${NOTIFICATION}" | htmlspecialchars )" data-notification-body="$( printf %s "${RESULT}" | htmlspecialchars )">
+
+    <dialog ${DIALOG}>
+      <h3>$( printf %s "${NOTIFICATION}" | htmlspecialchars )</h3>
+      $( printf %s "${RESULT}" | do_convert_to_html )
+      <form method="dialog">
+        <button type="submit">$( gettext "Close" | htmlspecialchars )</button>
+      </form>
+    </dialog>
+
+    <div class="tabset">
+
+      <input type="radio" name="tab" id="tab1" value="tor-router" ${TAB1} />
+      <label for="tab1">$( gettext "Tor-Router" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab2" value="settings" ${TAB2} />
+      <label for="tab2">$( gettext "Settings" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab3" value="netstat" ${TAB3} />
+      <label for="tab3">$( gettext "Netstat" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab4" value="iptables" ${TAB4} />
+      <label for="tab4">$( gettext "Iptables" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab5" value="ipsets" ${TAB5} />
+      <label for="tab5">$( gettext "Ipsets" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab6" value="wlan" ${TAB6} />
+      <label for="tab6">$( gettext "Wlan" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab7" value="donate" ${TAB7} />
+      <label for="tab7">$( gettext "Please Donate" | htmlspecialchars )</label>
+
+      <input type="radio" name="tab" id="tab8" value="about" ${TAB8} />
+      <label for="tab8">$( gettext "About" | htmlspecialchars )</label>
+
+      <div class="tab-panels">
+
+        <section id="tor-router" class="tab-panel">
+          $( do_get_tor_router_status )
+
+          $( [ "$ACTION" = "logs" ] && do_get_tor_router_logs || true )
+<script>
+var el_pre = document.querySelector('#tor-router pre:last-of-type');
+el_pre.scrollTop = el_pre.scrollHeight;
+</script>
+
+          <form action="?tab=tor-router" method="post">
+            <button type="submit" name="action" value="start" ${btn_start}>$( gettext "Start" | htmlspecialchars )</button>
+            <button type="submit" name="action" value="stop" ${btn_stop}>$( gettext "Stop" | htmlspecialchars )</button>
+            <button type="submit" name="action" value="restart" ${btn_stop}>$( gettext "Restart" | htmlspecialchars )</button>
+            <button type="submit" name="action" value="reload" ${btn_reload}>$( gettext "Reload" | htmlspecialchars )</button>
+
+            <button type="submit" name="action" value="logs" title="$( gettext "View logs since the Tor-Router service was last started" | htmlspecialchars )">$( gettext "View Logs" | htmlspecialchars )</button>
+
+            <a href="https://check.torproject.org/" target="_blank"><button type="button">$( gettext "Show IP Address" | htmlspecialchars )</button></a>
+            <a href="?tab=tor-router"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+          </form>
+        </section>
+
+        <section id="settings" class="tab-panel">
+          <form action="?tab=settings" method="post">
+            <div id="editor"><textarea name="config" id="editing" maxlength="10000" spellcheck="false">$( do_read_settings | htmlspecialchars )</textarea></div>
+            <script>initEditor();</script>
+            <button type="submit" name="action" value="save">$( gettext "Save" | htmlspecialchars )</button>
+            <a href="?tab=settings"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+          </form>
+        </section>
+
+        <section id="netstat" class="tab-panel">
+          $( do_get_netstat_log -4 )
+          $( do_get_netstat_log -6 )
+          <a href="?tab=netstat"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+        </section>
+
+        <section id="iptables" class="tab-panel">
+          $( do_get_iptables_log -4 filter )
+          $( do_get_iptables_log -4 nat )
+          <a href="?tab=iptables"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+          $( do_get_iptables_log -6 filter )
+          $( do_get_iptables_log -6 nat )
+          <a href="?tab=iptables"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+        </section>
+
+        <section id="ipsets" class="tab-panel">
+          $( do_get_ipset_log TR_DPORTS )
+          $( do_get_ipset_log TR_LPORTS )
+          $( do_get_ipset_log TR_WHITELIST4 )
+          $( do_get_ipset_log TR_BLACKLIST4 )
+          $( do_get_ipset_log TR_WHITELIST6 )
+          $( do_get_ipset_log TR_BLACKLIST6 )
+          <a href="?tab=ipsets"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+        </section>
+
+        <section id="wlan" class="tab-panel">
+          $( do_get_wlan_clients )
+          <a href="?tab=wlan"><button type="button">$( gettext "Refresh this page" | htmlspecialchars )</button></a>
+        </section>
+
+        <section id="donate" class="tab-panel">
+          <div style="margin: 1rem auto; padding: 1rem; text-align: center; width: 36rem;">
+            <h3>&#x2764;&#xFE0F; $( gettext "Please Donate" | htmlspecialchars ) &#x2764;&#xFE0F;</h3>
+            <img src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEUAAAD///+l2Z/dAAABX0lEQVRYw9WXsZWDMBBEh6fAISVQijpDus5UCiU4JNDT3GgXna+E9QRg9J0MfPYheEbiG9iotAJLaGJXlcqFQosvxSYdyHX2OdoJJdOWvoGQ986GdONo5XtIf8mdQrUi4xDTYeDFK/907MuQ2MQz0r2LqNWx3sbQhB6tIdfET0KTrb/IOnVBHk50unINTaD7rwt7D0+olQ/qhuDkY3wVRyaw63dowg4bK7OVjLcmSccSmygNmxlvrVD8KQQnNzLdoGruFCTx2GTr2NVH3OPuBCHkO3Pya93rkTS1gxO57H0O/hkSnoxn8tGsMAKb16GJjIZOijroX5MowQn59Hkjc36HsG7UMTaB5kbWhfK483QLTWiRQbDMp8CuhjU08Qytsc1utmPRpIlN1p5Wrk93uPoEJ2sH9jddYN1KIDLdOJ0MEdYvIG7IuXSZiU3ckP7fa9uPhyYe37Fs/hVtpEYmv9sFZAp3xa+AAAAAAElFTkSuQmCC' width="200" />
+            <p style="font-size: 2rem; line-height: 2rem; margin: 1rem auto;">&#x1F97A;</p>
+            <p>$( gettext "This project is open source, and the only income comes from the donators. If you like the project, please donate, thank you!" | htmlspecialchars )</p>
+            <p><a href="bitcoin:bc1q9ha0l0tt7dghcpgext8jppejandefeshcukpxx" target="_blank"><code>bitcoin:bc1q9ha0l0tt7dghcpgext8jppejandefeshcukpxx</code></a></p>
+            <input type="text" value="bc1q9ha0l0tt7dghcpgext8jppejandefeshcukpxx" id="btc-address" hidden data-alert-message="$( gettext "The bitcoin address has been copied to the clipboard!" | htmlspecialchars )" />
+            <p><button type="button" onclick="copyToClipboard('btc-address')">$( gettext "Copy address" | htmlspecialchars )</button></p>
+            <hr />
+            <h3>$( gettext "Top Donors" | htmlspecialchars )</h3>
+            <ol style="display: inline-block; margin: 0; padding: 0; list-style-position: inside;">
+              <li>YOUR NAME</li>
+              <li>YOUR NAME</li>
+              <li>YOUR NAME</li>
+            </ol>
+          </div>
+        </section>
+
+        <section id="about" class="tab-panel">
+          <div style="margin: 1rem auto; padding: 1rem; text-align: center; width: 36rem;">
+            <img src='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><defs><linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23b92ff5" /><stop offset="100%" stop-color="%23430c5f" /></linearGradient></defs><mask id="ring-mask"><circle cx="256" cy="256" r="214" fill="%23fff" /><circle cx="256" cy="256" r="172" fill="%23000" /><circle cx="256" cy="256" r="130" fill="%23fff" /><circle cx="256" cy="256" r="88" fill="%23000" /><circle cx="256" cy="256" r="46" fill="%23fff" /><rect x="256" y="0" width="256" height="512" fill="%23000" /></mask><circle cx="256" cy="256" r="256" fill="url(%23gradient)" /><circle cx="256" cy="256" r="256" fill="%23fff" mask="url(%23ring-mask)" /></svg>' width="192" />
+            <h3>Tor-Router Web Gui</h3>
+            <p>1.0</p>
+            <p>$( gettext "The Tor-Router Web Gui allows you to manage and monitor Tor-Router remotely via a web browser." | htmlspecialchars )</p>
+            <p><a href="https://github.com/m4dm4x1337/tor-router-web-gui" target="_blank">$( gettext "Website" | htmlspecialchars )</a></p>
+            <hr />
+            <h3>$( gettext "Credits" | htmlspecialchars )</h3>
+            <p>$( FORMAT=$(gettext "Created by %s") ; printf "$FORMAT" m4dm4x1337 | htmlspecialchars )</p>
+            <hr />
+            <h3>$( gettext "Web App" | htmlspecialchars )</h3>
+            <p>$( gettext "Click on the button to install Tor-Router Web Gui on your home screen." | htmlspecialchars )</p>
+            <button id="install-button" disabled="disabled">$( gettext "Install Tor-Router Web Gui App" | htmlspecialchars )</button>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+  </body>
+
+</html>
+
+EOT
+}
+

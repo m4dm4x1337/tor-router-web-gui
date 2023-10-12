@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "upgrade" ]; then
+  : # continue running, restart in postinst
+elif [ -x /etc/init.d/tor-router-web-gui ]; then
+  invoke-rc.d tor-router-web-gui stop || true
+fi
+
+exit 0
