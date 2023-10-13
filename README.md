@@ -4,6 +4,9 @@
 
 **Tor-Router Web Gui** allows you to manage and monitor [Tor-Router](https://github.com/m4dm4x1337/tor-router) remotely via a web browser.
 
+![Screenshot 1](https://raw.githubusercontent.com/m4dm4x1337/tor-router-web-gui/master/resources/images/screenshot1.png)
+![Screenshot 2](https://raw.githubusercontent.com/m4dm4x1337/tor-router-web-gui/master/resources/images/screenshot2.png)
+
 ## Installation
 
 Download the Debian package and run this commands:
