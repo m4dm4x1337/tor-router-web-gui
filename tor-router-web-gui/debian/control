@@ -7,7 +7,7 @@ Standards-Version: 4.6.2
 
 Package: tor-router-web-gui
 Architecture: all
-Depends: bsdmainutils, colorized-logs, coreutils (>= 8.5), gawk, grep (>= 2.5.4), ipset, iptables, iw, lsb-base, net-tools, procps, python3, sed (>= 4.2), sudo, tor-router
+Depends: bsdmainutils, colorized-logs, coreutils (>= 8.5), gawk, gettext-base, grep (>= 2.5.4), ipset, iptables, iw, lsb-base, net-tools, procps, python3, sed (>= 4.2), sudo, tor-router
 Enhances: tor-router
 Suggests: tor-router-gnome
 Homepage: https://github.com/m4dm4x1337/tor-router-web-gui
