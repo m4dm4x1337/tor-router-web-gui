@@ -33,7 +33,7 @@ do_highlight() {
     s/\b(TIME_WAIT|timewait)\b/${y}\0${_}/g
     s/\b(SYN_SENT|udp|udp6|debian-tor)\b/${m}\0${_}/g
     s/\b(LISTEN|tcp|tcp6|root|keepalive)\b/${b}\0${_}/g
-    s/\b(SYNC_RECV|probe)\b/${c}\0${_}/g
+    s/\b(SYNC_RECV|probe|raw|raw6)\b/${c}\0${_}/g
     s/\b(IDLE|Proto|Recv-Q|Send-Q|Local|Foreign|State|User|Inode|PID\/Program|Timer|Idle|Retransmissions|Probes)\b/${w}\0${_}/g
     s/(\s+)(\S+)\:([0-9A-Za-z_\-]+|\*)/\1${w}\2${_}${r}:${_}${d}\3${_}/g
     s/(\s+)([0-9]+)(\/)(\S*)/\1${c}\2${_}${d}\3${_}${w}\4${_}/g
@@ -58,7 +58,7 @@ do_highlight() {
     ${ARGS:---tcp --udp} |
   tail -n+3 |
   tr -s ' ' '\t' |
-  sed -E 's/^\b(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(([A-Z_][0-9A-Z_]*)\s+)?(\S+\s+\S+\s+\S+).*\b(\S+\s+)\(([^\/]+)\/([^\/]+)\/([^\/]+)\)$/\1\t"\3"\t\4\t\5\t\6\t\7\t\8/g; s/""/-/' |
+  sed -E 's/^\b(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+(([A-Z_][0-9A-Z_]*|7)\s+)?(\S+\s+\S+\s+\S+).*\b(\S+\s+)\(([^\/]+)\/([^\/]+)\/([^\/]+)\)$/\1\t"\3"\t\4\t\5\t\6\t\7\t\8/g; s/""/-/' |
   cut -f1-7,9- |
   tr -d '"()' |
   sort -k1,1 -k4,4n -k5,5n -k6,6
@@ -68,4 +68,3 @@ do_highlight() {
     do_highlight
 
 exit 0
-
