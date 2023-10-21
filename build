@@ -4,6 +4,15 @@ set -e
 
 ./clean
 
-cd tor-router-web-gui && dpkg-buildpackage --no-sign && cd ..
+cd tor-router-web-gui
+
+case "$1" in
+  --signed-source) dpkg-buildpackage --build=source --sign-key=B1C14B67C1FF9F12 ;;
+         --source) dpkg-buildpackage --build=source --no-sign ;;
+                *) dpkg-buildpackage --build=binary --no-sign ;;
+
+esac
+
+cd ..
 
 exit 0

@@ -5,7 +5,9 @@ set -e
 rm -fr \
   tor-router-web-gui_1.0* \
   tor-router-web-gui/debian/files \
-  tor-router-web-gui/debian/.debhelper/ \
-  tor-router-web-gui/debian/tor-router-web-gui*
+  tor-router-web-gui/debian/tor-router-web-gui/ \
+  tor-router-web-gui/debian/tor-router-web-gui.substvars \
+  tor-router-web-gui/debian/tor-router-web-gui.debhelper.log \
+  tor-router-web-gui/debian/.debhelper/
 
-exit $?
+exit 0
