@@ -4,8 +4,8 @@ After=network.target nss-lookup.target
 ReloadPropagatedFrom=%N.service
 
 [Service]
-EnvironmentFile=/etc/default/%N
-Type=simple
+EnvironmentFile=-/etc/default/%N
+Type=forking
 PIDFile=/var/run/%N/%N.pid
 PermissionsStartOnly=yes
 User=nobody
@@ -14,6 +14,8 @@ WorkingDirectory=/usr/share/%N/document-root
 ExecStartPre=/usr/bin/install -Z -m 02755 -o nobody -g nogroup -d /var/run/%N
 ExecStart=/usr/share/%N/%N
 Restart=on-failure
+RestartSec=5s
+StartLimitBurst=1
 LimitNOFILE=65536
 
 [Install]

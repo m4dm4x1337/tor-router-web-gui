@@ -19,6 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import base64
 import urllib.parse
 from http.server import HTTPServer, CGIHTTPRequestHandler
@@ -31,22 +32,29 @@ def main():
   Server.port     = os.environ['PORT']     if 'PORT'     in os.environ else 8080
 
   Server.auth     = base64.b64encode(bytes('{0}:{1}'.format(Server.username, Server.password), 'utf-8'))
-
-  httpd = HTTPServer((Server.address, Server.port), Server)
-
-  pid_file_path = "/var/run/tor-router-web-gui/tor-router-web-gui.pid"
-
-  current_pid = os.getpid()
+  Server.pidfile  = "/var/run/tor-router-web-gui/tor-router-web-gui.pid"
 
   try:
-    with open(pid_file_path, 'w') as pid_file:
-      pid_file.write(str(current_pid))
-    print(f"Server ready! (PID: {current_pid})")
+    httpd = HTTPServer((Server.address, Server.port), Server)
   except Exception as e:
-    print(f"Error writing PID file: {str(e)}")
+    print(f"\033[1;31mServer failed to listen at {Server.address}:{Server.port}: {str(e)}\033[0m", file=sys.stderr)
+    sys.exit(2)
 
+  pid = os.fork()
 
-  httpd.serve_forever()
+  if pid == 0:
+
+    try:
+      with open(Server.pidfile, 'w') as pid_file:
+        pid_file.write(str(os.getpid()))
+    except Exception as e:
+      print(f"\033[1;31mError writing PID file: {str(e)}\033[0m", file=sys.stderr)
+      sys.exit(2)
+
+    print(f"\033[1mServer listening at {Server.address}:{Server.port} (PID: {os.getpid()})\033[0m")
+    print(f"\033[1mUsername: '{Server.username}'\033[0m")
+    print(f"\033[1mPassword: '{Server.password}'\033[0m")
+    httpd.serve_forever()
 
 class Server(CGIHTTPRequestHandler):
   def do_HEAD(self, authenticated):
@@ -85,4 +93,3 @@ class Server(CGIHTTPRequestHandler):
 
 if __name__ == '__main__':
   main()
-
