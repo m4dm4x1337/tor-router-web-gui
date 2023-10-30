@@ -29,6 +29,7 @@ do_highlight() {
   sed -E "
     ${DEBIAN_TOR_UID:+s/(owner\s+UID\s+match\s+)$DEBIAN_TOR_UID/\1${g}debian-tor${_}/g}
 
+    s/^(\s*\S+\s+\S+\s+\S+\s+)(0)(\s)\s\s/\1all\3/
     s/^(\s*\S+\s+\S+\s+\S+\s+)(6)(\s)\s\s/\1tcp\3/
     s/^(\s*\S+\s+\S+\s+\S+\s+)(17)(\s)\s/\1udp\3/
 
